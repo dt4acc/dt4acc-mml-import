@@ -16,10 +16,10 @@ logger = logging.getLogger("dt4acc-mml-importer")
 # Type definitions for nested sequences
 IntSequence2D: TypeAlias = Sequence[Sequence[int]]
 FloatSequence2D: TypeAlias = Sequence[Sequence[float]]
-StrSequence: TypeAlias = Sequence[str]
-FloatSequence: TypeAlias = Sequence[float]
 DeviceIndex: TypeAlias = Tuple[int, int]
 Range: TypeAlias = Tuple[float, float]
+# StrSequence: TypeAlias = Sequence[str]
+# FloatSequence: TypeAlias = Sequence[float]
 
 
 class ATElementsInfo(BaseModel):
@@ -28,7 +28,7 @@ class ATElementsInfo(BaseModel):
     Should be always a sequence of integers after normalization.
     """
     ATType: str
-    ATIndex: Union[int, Sequence[int], Sequence[Sequence[int]]]
+    ATIndex: Sequence[Sequence[int]]
 
     @field_validator('ATIndex')
     @classmethod
@@ -62,23 +62,23 @@ class ConversionFunction(BaseModel):
 
 class MonitorDataModel(BaseModel):
     """Base model for monitor data with normalization."""
-    ChannelNames: Union[StrSequence, str]
-    MemberOf: Optional[Union[StrSequence, str]] = None
+    ChannelNames: Sequence[str]
+    MemberOf: Optional[Sequence[str]] = None
     DataType: str
     Units: str
-    HWUnits: Union[StrSequence, str]
-    PhysicsUnits: Union[StrSequence, str]
+    HWUnits: Sequence[str]
+    PhysicsUnits: Sequence[str]
     Mode: Optional[str] = None
-    MetaGain: Optional[Union[FloatSequence, float]] = None
+    MetaGain: Optional[Sequence[float]] = None
     PhysicalUnits: Optional[str] = None
-    HW2PhysicsParams: Optional[Union[FloatSequence, float]] = None
-    Physics2HWParams: Optional[Union[FloatSequence, float]] = None
+    HW2PhysicsParams: Optional[Sequence[float]] = None
+    Physics2HWParams: Optional[Sequence[float]] = None
     HW2PhysicsFcn: Optional[ConversionFunction] = None
     Physics2HWFcn: Optional[ConversionFunction] = None
 
     @field_validator('ChannelNames')
     @classmethod
-    def normalize_channel_names(cls, v: Union[StrSequence, str]) -> StrSequence:
+    def normalize_channel_names(cls, v: Union[Sequence[str], str]) -> Sequence[str]:
         """Normalize ChannelNames to sequence of strings."""
         if isinstance(v, str):
             return [v]
@@ -86,7 +86,7 @@ class MonitorDataModel(BaseModel):
 
     @field_validator('MemberOf')
     @classmethod
-    def normalize_member_of(cls, v: Optional[Union[StrSequence, str]]) -> Optional[StrSequence]:
+    def normalize_member_of(cls, v: Optional[Union[Sequence[str], str]]) -> Optional[Sequence[str]]:
         """Normalize MemberOf to sequence of strings."""
         if v is None:
             return None
@@ -96,7 +96,7 @@ class MonitorDataModel(BaseModel):
 
     @field_validator('HWUnits')
     @classmethod
-    def normalize_hw_units(cls, v: Union[StrSequence, str]) -> StrSequence:
+    def normalize_hw_units(cls, v: Union[Sequence[str], str]) -> Sequence[str]:
         """Normalize HWUnits to sequence of strings."""
         if isinstance(v, str):
             return [v]
@@ -104,7 +104,7 @@ class MonitorDataModel(BaseModel):
 
     @field_validator('PhysicsUnits')
     @classmethod
-    def normalize_physics_units(cls, v: Union[StrSequence, str]) -> StrSequence:
+    def normalize_physics_units(cls, v: Union[Sequence[str], str]) -> Sequence[str]:
         """Normalize PhysicsUnits to sequence of strings."""
         if isinstance(v, str):
             return [v]
@@ -112,7 +112,7 @@ class MonitorDataModel(BaseModel):
 
     @field_validator('MetaGain')
     @classmethod
-    def normalize_meta_gain(cls, v: Optional[Union[FloatSequence, float]]) -> Optional[FloatSequence]:
+    def normalize_meta_gain(cls, v: Optional[Union[Sequence[float], float]]) -> Optional[Sequence[float]]:
         """Normalize MetaGain to sequence of floats."""
         if v is None:
             return None
@@ -122,7 +122,7 @@ class MonitorDataModel(BaseModel):
 
     @field_validator('HW2PhysicsParams')
     @classmethod
-    def normalize_hw2physics_params(cls, v: Optional[Union[FloatSequence, float]]) -> Optional[FloatSequence]:
+    def normalize_hw2physics_params(cls, v: Optional[Union[Sequence[float], float]]) -> Optional[Sequence[float]]:
         """Normalize HW2PhysicsParams to sequence of floats."""
         if v is None:
             return None
@@ -132,7 +132,7 @@ class MonitorDataModel(BaseModel):
 
     @field_validator('Physics2HWParams')
     @classmethod
-    def normalize_physics2hw_params(cls, v: Optional[Union[FloatSequence, float]]) -> Optional[FloatSequence]:
+    def normalize_physics2hw_params(cls, v: Optional[Union[Sequence[float], float]]) -> Optional[Sequence[float]]:
         """Normalize Physics2HWParams to sequence of floats."""
         if v is None:
             return None
@@ -156,20 +156,20 @@ class SetpointDataModel(MonitorDataModel):
 
 class FamilyInfoCollection(BaseModel):
     """Collected info entries following Matlab Middle Layer ao object."""
-    MemberOf: Union[StrSequence, str]
-    CommonNames: Optional[Union[StrSequence, str]] = None
+    MemberOf: Union[Sequence[str], str]
+    CommonNames: Optional[Union[Sequence[str], str]] = None
     DeviceList: Union[Sequence[DeviceIndex], DeviceIndex]
     ElementList: Union[Sequence[int], int]
     Status: Union[Sequence[int], int]
-    Position: Optional[Union[FloatSequence, float]] = None
+    Position: Optional[Union[Sequence[float], float]] = None
     Monitor: Optional[MonitorDataModel] = None
-    Offset: Optional[Union[FloatSequence, float]] = None
+    Offset: Optional[Union[Sequence[float], float]] = None
     Setpoint: Optional[SetpointDataModel] = None
     AT: Optional[ATElementsInfo] = None
 
     @field_validator('MemberOf')
     @classmethod
-    def normalize_member_of(cls, v: Union[StrSequence, str]) -> StrSequence:
+    def normalize_member_of(cls, v: Union[Sequence[str], str]) -> Sequence[str]:
         """Normalize MemberOf to sequence of strings."""
         if isinstance(v, str):
             return [v]
@@ -177,7 +177,7 @@ class FamilyInfoCollection(BaseModel):
 
     @field_validator('CommonNames')
     @classmethod
-    def normalize_common_names(cls, v: Optional[Union[StrSequence, str]]) -> Optional[StrSequence]:
+    def normalize_common_names(cls, v: Optional[Union[Sequence[str], str]]) -> Optional[Sequence[str]]:
         """Normalize CommonNames to sequence of strings."""
         if v is None:
             return None
@@ -211,7 +211,7 @@ class FamilyInfoCollection(BaseModel):
 
     @field_validator('Position')
     @classmethod
-    def normalize_position(cls, v: Optional[Union[FloatSequence, float]]) -> Optional[FloatSequence]:
+    def normalize_position(cls, v: Optional[Union[Sequence[float], float]]) -> Optional[Sequence[float]]:
         """Normalize Position to sequence of floats."""
         if v is None:
             return None
@@ -221,7 +221,7 @@ class FamilyInfoCollection(BaseModel):
 
     @field_validator('Offset')
     @classmethod
-    def normalize_offset(cls, v: Optional[Union[FloatSequence, float]]) -> Optional[FloatSequence]:
+    def normalize_offset(cls, v: Optional[Union[Sequence[float], float]]) -> Optional[Sequence[float]]:
         """Normalize Offset to sequence of floats."""
         if v is None:
             return None
@@ -233,7 +233,7 @@ class FamilyInfoCollection(BaseModel):
         """Return the normalized device list."""
         return self.DeviceList
 
-    def member_of(self) -> StrSequence:
+    def member_of(self) -> Sequence[str]:
         """Return the normalized member of sequence."""
         return self.MemberOf
 
