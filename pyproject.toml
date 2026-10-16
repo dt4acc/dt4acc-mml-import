@@ -2,21 +2,16 @@
 requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
-[[tool.hatch.build.hooks.vcs]]
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/dt4acc_mml_import"]
 
 [tool.hatch.version]
 source = "vcs"
 
-[tool.hatch.build.hooks.vcs.version-setup-py]
-
 [project]
 name = "dt4acc-mml-import"
 dynamic = ["version"]
 description = "Import MATLAB Middle Layer (MML) ao data to a Pydantic data model"
-readme = "README.md"
 requires-python = ">=3.11"
 license = "GPL-3.0-only"
 authors = [
@@ -37,6 +32,9 @@ format = "ruff format {args:.}"
 [tool.ruff.lint]
 select = ["E", "F", "C9", "W", "B", "A", "UP", "I", "N", "S", "DTZ", "T20", "SIM", "G", "PIE", "RSE", "RET", "PL"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "PLR2004"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
