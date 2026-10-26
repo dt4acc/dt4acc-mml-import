@@ -15,7 +15,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, TypeAlias
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
 logger = logging.getLogger("dt4acc-mml-importer")
 
@@ -100,8 +100,9 @@ class ATParameter(BaseModel):
     """
 
     ElemIndex: int
-    FieldName: str
-    FieldIndex: Sequence[int]
+    #: missing in some exports (MAX IV R1 SHUNT: only ElemIndex)
+    FieldName: str | None = None
+    FieldIndex: Sequence[int] | None = None
     SavedValue: Any = None
     #: an anonymous-function string ("@(x)x") or an exported inline object
     Function: Any = None
@@ -127,6 +128,14 @@ class ATElementsInfo(BaseModel):
     ATIndex: IntSequence2D | None = None
     #: one group per device, each a sequence of AT fields the setpoint drives
     ATParameterGroup: Sequence[Sequence[ATParameter]] | None = None
+    SpecialFunctionGet: str | None = None
+    SpecialFunctionSet: str | None = None
+
+    @field_validator("SpecialFunctionGet", "SpecialFunctionSet", mode="before")
+    @classmethod
+    def normalize_special_function(cls, v: Any) -> Any:
+        """Accept a function handle struct (ALS, loaded from .mat) as its name."""
+        return _function_name(v)
 
     @field_validator("ATParameterGroup", mode="before")
     @classmethod
@@ -151,6 +160,10 @@ class ATElementsInfo(BaseModel):
     def get_element_indices(self) -> IntSequence2D | None:
         """Return the normalized element indices."""
         return self.ATIndex
+
+    def element_indices(self) -> list[list[int]]:
+        """1-based element indices per device, 0 padding removed."""
+        return [[int(x) for x in row if x] for row in self.ATIndex or []]
 
 
 class ConversionFunctionHandle(BaseModel):
@@ -182,11 +195,29 @@ class ConversionFunction(BaseModel):
 def _as_conversion_function(v: Any) -> Any:
     if isinstance(v, str):
         return {"function_handle": {"function": v}}
+    if isinstance(v, (int, float)):
+        # MAX IV: HW2PhysicsFcn = 1 for signals without conversion
+        return None
+    return v
+
+
+def _function_name(v: Any) -> Any:
+    """A special function as its name: a string, or (ALS, loaded from .mat)
+    a function handle struct; an empty MATLAB array means none."""
+    if isinstance(v, dict) and isinstance(v.get("function_handle"), dict):
+        return v["function_handle"].get("function")
+    if isinstance(v, (list, tuple)) and not v:
+        return None
     return v
 
 
 class MonitorDataModel(BaseModel):
-    """Base model for monitor data with normalization."""
+    """A signal of a family: Monitor, Setpoint, or e.g. Sum, Voltage.
+
+    Fields not modeled here are kept (``extra="allow"``).
+    """
+
+    model_config = ConfigDict(extra="allow")
 
     #: absent for e.g. TUNE / PFS families
     ChannelNames: StrSequence | None = None
@@ -202,6 +233,9 @@ class MonitorDataModel(BaseModel):
     Physics2HWParams: ParamBlocks | None = None
     HW2PhysicsFcn: ConversionFunction | None = None
     Physics2HWFcn: ConversionFunction | None = None
+    SpecialFunctionGet: str | None = None
+    SpecialFunctionSet: str | None = None
+    Tolerance: Sequence[float | None] | None = None
 
     @field_validator("ChannelNames", "MemberOf", "HWUnits", "PhysicsUnits", mode="before")
     @classmethod
@@ -209,11 +243,17 @@ class MonitorDataModel(BaseModel):
         """Normalize a bare string to a one-element sequence of strings."""
         return _as_str_sequence(v)
 
-    @field_validator("MetaGain", mode="before")
+    @field_validator("MetaGain", "Tolerance", mode="before")
     @classmethod
     def normalize_meta_gain(cls, v: Any) -> Any:
-        """Normalize MetaGain to sequence of floats."""
+        """Normalize MetaGain / Tolerance to sequences of floats."""
         return _as_sequence(v)
+
+    @field_validator("SpecialFunctionGet", "SpecialFunctionSet", mode="before")
+    @classmethod
+    def normalize_special_function(cls, v: Any) -> Any:
+        """Accept a function handle struct (ALS, loaded from .mat) as its name."""
+        return _function_name(v)
 
     @field_validator("HW2PhysicsParams", "Physics2HWParams", mode="before")
     @classmethod
@@ -247,7 +287,13 @@ class SetpointDataModel(MonitorDataModel):
 
 
 class FamilyInfoCollection(BaseModel):
-    """Collected info entries following Matlab Middle Layer ao object."""
+    """Collected info entries following Matlab Middle Layer ao object.
+
+    Further signals of a family (e.g. ``Sum``, ``Voltage``, ``Resistance``)
+    are kept as extra fields, see :meth:`other_signals`.
+    """
+
+    model_config = ConfigDict(extra="allow")
 
     FamilyName: str | None = None
     FamilyType: str | None = None
@@ -296,6 +342,17 @@ class FamilyInfoCollection(BaseModel):
         """Get the index of a device in the device list."""
         return list(self.DeviceList).index((sector, child))
 
+    def other_signals(self) -> dict[str, MonitorDataModel]:
+        """Extra sub-objects that carry channel names, e.g. ``Sum``, ``Voltage``."""
+        signals = {}
+        for name, value in (self.model_extra or {}).items():
+            if isinstance(value, dict) and "ChannelNames" in value:
+                try:
+                    signals[name] = MonitorDataModel.model_validate(value)
+                except ValidationError as exc:
+                    logger.warning("Signal %s of family %s not understood: %s", name, self.FamilyName, exc)
+        return signals
+
 
 def load(data: dict[str, Any]) -> dict[str, FamilyInfoCollection]:
     """Load an exported ``ao`` dict into FamilyInfoCollection models.
@@ -328,4 +385,6 @@ def load_file(path: str | Path, *, strict: bool = False) -> dict[str, FamilyInfo
     """Load an ``ao`` JSON export from disk."""
     with open(path, encoding="utf-8") as fp:
         data = json.load(fp)
+    if isinstance(data.get("ao"), dict):
+        data = data["ao"]
     return load_strict(data) if strict else load(data)
