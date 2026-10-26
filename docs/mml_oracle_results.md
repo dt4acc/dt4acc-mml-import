@@ -1,6 +1,6 @@
-# MML oracle comparison, 2026-10-23
+# MML oracle comparison, 2026-10-26
 
-Produced by scripts/mml_oracle/ao_oracle.m (z3, MATLAB R2023b) and compare_ao_oracle.py; see ao_data_model.md.
+Produced by scripts/mml_oracle/ao_oracle.m (MATLAB R2023b) and compare_ao_oracle.py; see ao_data_model.md.
 
 ## MAXIV R1: R1 1.500 GeV, production optics 2024, run period 2
 

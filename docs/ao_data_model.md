@@ -118,7 +118,7 @@ MML_ROOT=<mml> MML_MACHINE=MAXIV MML_SUBMACHINE=R1 MML_MODE=20 OUT_PREFIX=maxiv_
 python scripts/mml_oracle/compare_ao_oracle.py maxiv_r1 als -o report.md
 ```
 
-Run 2026-10-23 on z3 (MATLAB R2023b): MAX IV's MML, R1, operational mode 20
+Run 2026-10-26 with MATLAB R2023b: MAX IV's MML, R1, operational mode 20
 (1.5 GeV, production optics 2024) and ALS's public MML, TopOff (1.9 GeV).
 Result: [mml_oracle_results.md](mml_oracle_results.md)
 
@@ -150,5 +150,4 @@ Not differences of the model, reported separately:
   12 magnets x 4 slices); a lattice model would sit beside this one.
 * Families whose MML behaviour is computed, not configured (MAX IV PFS, BEND
   energy coupling `bend2gev`).
-* BESSY II / MLS against their MML (HZB fork, not run off site): checked
-  against their exports only.
+* BESSY II / MLS: checked against their exports, not yet against their MML.
